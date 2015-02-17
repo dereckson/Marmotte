@@ -12,9 +12,12 @@ ini_set('xdebug.show_local_vars', 'on');
 ini_set("session.gc_maxlifetime", 3600);
 session_start();
 
+if(!isset($_SESSION["login"]))
+	$_SESSION["login"] = "";
+
 require_once("db.inc.php");
 require_once('authenticate_tools.inc.php');
-
+//invalide
 try
 {
 	try
@@ -43,21 +46,56 @@ try
 		
 		$action = isset($_REQUEST["action"]) ? mysqli_real_escape_string($dbh, $_REQUEST["action"]) : "";
 		$errorLogin = 0;
+		if($action == "authjanus")
+		{
+			echo "Authentification JANUS '".$_SERVER["REMOTE_USER"]."'<br/>";
+			if($_SERVER["REMOTE_USER"] == "")
+				removeCredentials();
+		}
 		if($action == "auth")
 		{
-			if(isset($_REQUEST["login"]) and isset($_REQUEST["password"]))
+			removeCredentials();
+			
+			if(isset($_REQUEST["login"]) and isset($_REQUEST["password"]) and isset($_REQUEST["type_authentification"]))
 			{
-				$login =  mysqli_real_escape_string($dbh, $_REQUEST["login"]);
-				$pwd =  mysqli_real_escape_string($dbh, $_REQUEST["password"]);
+				$login =  $_REQUEST["login"];
+				$pwd =  $_REQUEST["password"];
+				$type = $_REQUEST["type_authentification"];
+				
 				addCredentials($login,$pwd);
+				
+				if($type == "janus")
+				{
+					require 'PMSP/Pmsp.php';
+					
+					
+					$pubkey = "/etc/pmsp/pmsp.pub";
+					$server = "https://vigny.dr15.cnrs.fr/secure/pmsp-server.php";
+					$appid = "PMSP Marmotte";
+					$attributes = 'mail,ou,cn,sn,givenName,displayname';
+					
+					//if (/* l'utilisateur n'est pas encore authentifié */) {
+					$pmsp = new Pmsp($server, $pubkey, $appid, "http://127.0.0.1/index.php?action=authjanus");
+					
+					$pmsp->authentify($attributes);
+										
+					/*
+					 * A cet endroit $_SERVER[$attr] contient les valeurs de tous les attributs
+					* indiqués dans la liste $attributes, sauf ceux que le fournisseur de service
+					* qui héberge le serveur PMSP n'a pas obtenu via Shibboleth.
+					* L'attribut REMOTE_USER est automatiquement ajouté à la liste.
+					* Pour Janus, c'est l'adresse de messagerie en minuscules
+					*/
+					$login = $_SERVER['REMOTE_USER'];
+					$pwd = "";
+					$username = $_SERVER['cn'];
+					$userlaboratory = $_SERVER['ou'];
+					
+				//filter_id_sess	
+				}
 				if (!authenticate())
 				{
 					$errorLogin = 1;
-				}
-				else
-				{
-					require_once("config_tools.inc.php");
-					$_SESSION['filter_id_session'] = get_config("current_session");
 				}
 			}
 		}
@@ -69,7 +107,13 @@ try
 			include("authenticate.inc.php");
 		}
 		else
-		{			
+		{	
+			if(!isset($_SESSION['filter_id_session']))
+			{
+				require_once("config_tools.inc.php");
+				$_SESSION['filter_id_session'] = get_config("current_session");
+			}
+			
 			require_once("utils.inc.php");
 			require_once("manage_users.inc.php");
 			if(isSecretaire() && !isset($_SESSION["htpasswd"]))

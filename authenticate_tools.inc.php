@@ -60,16 +60,14 @@ function getSections($login)
 	if ($row = mysqli_fetch_object($result))
 		$sections = $row->sections;
 	else
-		throw new Exception("Failed to query the list of all sections for user '" + $login+"'");
+		throw new Exception("Failed to query the list of all sections for user '".$login."'");
 	return explode(";", $sections);
 }
 
 function addCredentials($login,$pwd)
 {
-	global $dbh;
 	$_SESSION['login'] = $login;
 	$_SESSION['pass'] = $pwd;
-	
 }
 
 function removeCredentials()
@@ -87,6 +85,7 @@ function removeCredentials()
 	unset($_SESSION["rows_id"]);
 	unset($_SESSION["lose_secretary_status"]);
 	unset($_SESSION["permission_mask"]);
+	unset($_SERVER['REMOTE_USER']);
 }
 
 function authenticateBase($login,$pwd)
@@ -100,13 +99,26 @@ function authenticateBase($login,$pwd)
 
 function authenticate()
 {
-	
 	if (isset($_SESSION['login']) and isset($_SESSION['pass']))
 	{
+		if(isset($_SESSION["janus"]))
+		{
+			if(!$_SESSION["janus"])
+				return false;
+			$_SESSION['login'] = $_SERVER['REMOTE_USER'];
+			$_SESSION['pass'] = "";
+		}
+		
 		$login  = $_SESSION['login'];
 		$pwd = $_SESSION['pass'];
-		$result = authenticateBase($login,$pwd);
-		if(!$result) return false;
+		
+		if(!isset($_SESSION["janus_ok"]))
+		{
+			//second cas marmotte identification
+			$result = authenticateBase($login,$pwd);
+			if(!$result) return false;
+		}
+		
 		if(!isset($_SESSION['permission']))
 		{
 			global $dbh;

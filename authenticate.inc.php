@@ -33,6 +33,15 @@ $firstlogin = authenticateBase('admin','password');
 			<td><span class="label">Mot de passe</span></td>
 			<td><input name="password" type="password" value="<?php if($firstlogin) echo 'password';?>"></input></td>
 		</tr>
+		<tr>
+		<td>Type</td>
+		<td>
+		<select name="type_authentification">
+		<option value="marmotte">Marmotte</option>
+		<option value="janus">Janus - CNRS</option>
+		</select>
+		</td>
+		</tr>
 	</table>
 	<?php 
 		if ($errorLogin)
